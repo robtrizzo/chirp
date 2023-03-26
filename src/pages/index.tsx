@@ -1,19 +1,20 @@
-import { type NextPage } from "next";
-import Head from "next/head";
-import Link from "next/link";
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
-import type { RouterOutputs } from "~/utils/api";
+import { type NextPage } from "next";
+
 import { api } from "~/utils/api";
 
-import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import Image from "next/image";
 import { LoadingPage, LoadingSpinner } from "~/components/loading";
-
-dayjs.extend(relativeTime);
+import { useState } from "react";
+import { PostView } from "~/components/postview";
+import Head from "next/head";
 
 const CreatePostWizard = () => {
   const { user } = useUser();
+
+  const { mutate } = api.posts.create.useMutation();
+
+  const [input, setInput] = useState("");
 
   if (!user) return null;
 
@@ -29,43 +30,29 @@ const CreatePostWizard = () => {
       <input
         placeholder="Type some emojis!"
         className="grow bg-transparent outline-none"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
       />
-    </div>
-  );
-};
-
-type PostWithUser = RouterOutputs["posts"]["getAll"][number];
-const PostView = (props: PostWithUser) => {
-  const { post, author } = props;
-  return (
-    <div key={post.id} className="flex gap-3 border-b border-slate-400 p-4">
-      <Image
-        src={author.profileImageUrl}
-        alt={`@${author.username}'s profile picture`}
-        className="h-14 w-14 rounded-full"
-        width={56}
-        height={56}
-      />
-      <div className="flex flex-col">
-        <div className="flex gap-1 text-slate-300">
-          <span>{`@${author.username}`}</span>
-          <span className="font-thin">{` · ${dayjs(
-            post.createdAt
-          ).fromNow()}`}</span>
-        </div>
-        <span className="text-xl">{post.content}</span>
-      </div>
+      <button onClick={() => mutate({ content: input })}>Post</button>
     </div>
   );
 };
 
 const Feed = () => {
   const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
-  if (postsLoading) return <LoadingPage />;
+
+  if (postsLoading)
+    return (
+      <div className="flex grow">
+        <LoadingPage />
+      </div>
+    );
+
   if (!data) return <div>Something went wrong</div>;
+
   return (
-    <div className="flex flex-col">
-      {[...data]?.map((fullPost) => (
+    <div className="flex grow flex-col overflow-y-scroll">
+      {data?.map((fullPost) => (
         <PostView {...fullPost} key={fullPost.post.id} />
       ))}
     </div>
